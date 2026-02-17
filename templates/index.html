@@ -89,6 +89,15 @@
                        class="form-control form-control-lg"
                        placeholder="What do you need to do?"
                        required>
+                <input type="date"
+                       name="deadline"
+                       class="form-control form-control-lg"
+                       style="max-width: 160px;">
+                <select name="priority" class="form-select form-select-lg" style="max-width:120px;">
+                    <option value="1">High</option>
+                    <option value="2">Medium</option>
+                    <option value="3" selected>Low</option>
+                </select>
                 <button class="btn btn-primary btn-lg">
                     <i class="bi bi-plus-lg"></i>
                 </button>
@@ -98,9 +107,12 @@
             <ul class="list-group mb-3">
                 {% for task in tasks if not task.completed %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span class="task-text">
-                            {{ task.content }}
-                        </span>
+                        <div>
+                            <div class="task-text">{{ task.content }}</div>
+                            {% if task.deadline %}
+                                <small class="text-muted">Due: {{ task.deadline }}</small>
+                            {% endif %}
+                        </div>
 
                         <div>
                             <!-- Edit -->
@@ -140,6 +152,14 @@
                                                class="form-control"
                                                value="{{ task.content }}"
                                                required>
+                                        <div class="mt-2 d-flex gap-2">
+                                            <input type="date" name="deadline" class="form-control" value="{{ task.deadline or '' }}">
+                                            <select name="priority" class="form-select" style="max-width:140px;">
+                                                <option value="1" {% if task.priority==1 %}selected{% endif %}>High</option>
+                                                <option value="2" {% if task.priority==2 %}selected{% endif %}>Medium</option>
+                                                <option value="3" {% if task.priority==3 %}selected{% endif %}>Low</option>
+                                            </select>
+                                        </div>
                                     </div>
 
                                     <div class="modal-footer">
