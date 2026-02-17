@@ -19,9 +19,20 @@ class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.String(200), nullable=False)
     completed = db.Column(db.Boolean, default=False)
+    deadline = db.Column(db.String(100), nullable=True)
+    priority = db.Column(db.Integer, default=3)
 
     def __repr__(self):
         return f"<Task {self.id}>"
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "content": self.content,
+            "completed": bool(self.completed),
+            "deadline": self.deadline,
+            "priority": self.priority,
+        }
 
 # ---- Create database ----
 with app.app_context():
@@ -38,7 +49,13 @@ def add():
     task_content = request.form.get("content")
 
     if task_content and task_content.strip():
-        new_task = Task(content=task_content.strip())
+        deadline = request.form.get("deadline") or None
+        try:
+            priority = int(request.form.get("priority") or 3)
+        except Exception:
+            priority = 3
+
+        new_task = Task(content=task_content.strip(), deadline=deadline, priority=priority)
         db.session.add(new_task)
         db.session.commit()
 
@@ -63,10 +80,18 @@ def delete(id):
 def edit(id):
     task = Task.query.get_or_404(id)
     new_content = request.form.get("content")
+    new_deadline = request.form.get("deadline")
+    try:
+        new_priority = int(request.form.get("priority") or task.priority)
+    except Exception:
+        new_priority = task.priority
 
     if new_content and new_content.strip():
         task.content = new_content.strip()
-        db.session.commit()
+    # update optional fields regardless
+    task.deadline = new_deadline or task.deadline
+    task.priority = new_priority
+    db.session.commit()
 
     return redirect(url_for("index"))
 
