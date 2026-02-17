@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, session, flash
+from functools import wraps
 from flask_sqlalchemy import SQLAlchemy
 import os
 
@@ -27,6 +28,17 @@ class Task(db.Model):
 with app.app_context():
     db.create_all()
 
+
+# ---- Simple auth helpers ----
+def login_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        if not session.get("user"):
+            return redirect(url_for("login", next=request.path))
+        return fn(*args, **kwargs)
+
+    return wrapper
+
 # ---- Routes ----
 @app.route("/")
 def index():
@@ -34,6 +46,7 @@ def index():
     return render_template("index.html", tasks=tasks)
 
 @app.route("/add", methods=["POST"])
+@login_required
 def add():
     task_content = request.form.get("content")
 
@@ -45,6 +58,7 @@ def add():
     return redirect(url_for("index"))
 
 @app.route("/complete/<int:id>")
+@login_required
 def complete(id):
     task = Task.query.get_or_404(id)
     task.completed = not task.completed
@@ -52,6 +66,7 @@ def complete(id):
     return redirect(url_for("index"))
 
 @app.route("/delete/<int:id>")
+@login_required
 def delete(id):
     task = Task.query.get_or_404(id)
     db.session.delete(task)
@@ -60,6 +75,7 @@ def delete(id):
 
 # ---- Run app ----
 @app.route("/edit/<int:id>", methods=["POST"])
+@login_required
 def edit(id):
     task = Task.query.get_or_404(id)
     new_content = request.form.get("content")
@@ -73,3 +89,30 @@ def edit(id):
 
 if __name__ == "__main__":
     app.run(debug=True)
+
+
+# ---- Auth routes ----
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        expected_user = os.environ.get("TODO_USER", "admin")
+        expected_pass = os.environ.get("TODO_PASS", "password")
+
+        if username == expected_user and password == expected_pass:
+            session["user"] = username
+            flash("Logged in successfully", "success")
+            next_url = request.args.get("next") or url_for("index")
+            return redirect(next_url)
+
+        flash("Invalid credentials", "danger")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    session.pop("user", None)
+    return redirect(url_for("index"))
